@@ -1,0 +1,17 @@
+# Ignore markdown files
+README.md
+TROUBLESHOOTING.md
+
+# Build output
+build/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# ESP-IDF specific
+sdkconfig.old

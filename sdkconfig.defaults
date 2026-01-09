@@ -1,0 +1,42 @@
+# Target Configuration
+CONFIG_IDF_TARGET="esp32c6"
+
+# ESP32C6-Specific
+CONFIG_ESP32C6_DEFAULT_CPU_FREQ_160=y
+
+# I2C Configuration
+CONFIG_I2C_ENABLE_DEBUG_LOG=n
+
+# FreeRTOS Configuration
+CONFIG_FREERTOS_HZ=1000
+
+# Component config
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# Serial flasher config
+CONFIG_ESPTOOLPY_BAUD_921600B=y
+
+# Log output
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
+
+# Main task stack size (increased for WiFi and HTTP)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# WiFi Configuration
+CONFIG_ESP_WIFI_SSID="YOUR_WIFI_SSID"
+CONFIG_ESP_WIFI_PASSWORD="YOUR_WIFI_PASS"
+
+# LWIP Configuration
+CONFIG_LWIP_LOCAL_HOSTNAME="esp32-env-monitor"
+
+# HTTP Server Configuration
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+CONFIG_HTTPD_MAX_URI_LEN=512
+
+# NVS Configuration
+CONFIG_NVS_ENCRYPTION=n
+
+# Power Management (optional - for energy saving)
+# CONFIG_PM_ENABLE=y
+# CONFIG_PM_DFS_INIT_AUTO=y
