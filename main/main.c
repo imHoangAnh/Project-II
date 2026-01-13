@@ -10,6 +10,7 @@
 #include "buzzer.h"
 #include "i2c_config.h"
 #include "iaq_calculator.h"
+#include "mqtt_client_app.h"
 
 #include "esp_log.h"
 #include "esp_system.h"
@@ -17,12 +18,14 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include <inttypes.h>
+#include <stdio.h>
 
 /* ========================== Configuration ================================ */
 
 #define TAG "MAIN"
 #define SENSOR_READ_INTERVAL_MS 10000 // Read sensor every 10 seconds
 #define IAQ_SAVE_INTERVAL 20          // Save IAQ state every N readings
+#define MQTT_ENABLED 1                // Enable/disable MQTT publishing
 
 /* ========================== Sensor Task ================================== */
 /**
@@ -136,6 +139,46 @@ static void sensor_task(void *pvParameters) {
       }
       ESP_LOGI(TAG, "");
 
+#if MQTT_ENABLED
+      /* Publish data to MQTT broker */
+      if (mqtt_is_connected()) {
+        /* Publish sensor data */
+        mqtt_sensor_data_t mqtt_sensor = {
+            .temperature = raw_data.temperature,
+            .humidity = raw_data.humidity,
+            .pressure = raw_data.pressure / 100.0f, // Convert to hPa
+            .gas_resistance = (float)raw_data.gas_resistance,
+            .gas_valid =
+                (raw_data.status & BME68X_GASM_VALID_MSK) ? true : false};
+        mqtt_publish_sensor_data(&mqtt_sensor);
+
+        /* Publish IAQ data if available */
+        if (iaq_ret == ESP_OK) {
+          mqtt_iaq_data_t mqtt_iaq = {
+              .iaq_score = iaq_result.iaq_score,
+              .iaq_level = (int)iaq_result.iaq_level,
+              .iaq_text = iaq_level_to_string(iaq_result.iaq_level),
+              .accuracy = (int)iaq_result.accuracy,
+              .co2_equivalent = iaq_result.co2_equivalent,
+              .voc_equivalent = iaq_result.voc_equivalent,
+              .is_calibrated = iaq_result.is_calibrated};
+          mqtt_publish_iaq_data(&mqtt_iaq);
+
+          /* Publish alert if air quality is bad */
+          if (iaq_result.is_calibrated &&
+              iaq_result.iaq_level >= IAQ_LEVEL_MODERATELY_POLLUTED) {
+            char alert_msg[128];
+            snprintf(alert_msg, sizeof(alert_msg),
+                     "Air quality is %s! IAQ Score: %.0f",
+                     iaq_level_to_string(iaq_result.iaq_level),
+                     iaq_result.iaq_score);
+            mqtt_publish_alert("IAQ_ALERT", alert_msg);
+          }
+        }
+        ESP_LOGI(TAG, "MQTT: Data published successfully");
+      }
+#endif
+
     } else {
       ESP_LOGE(TAG, "Failed to read sensor data!");
     }
@@ -163,6 +206,9 @@ static void print_system_info(void) {
   ESP_LOGI(TAG, "Temp Threshold: %.1f°C", bme680_app_get_threshold());
   ESP_LOGI(TAG, "Read Interval: %d ms", SENSOR_READ_INTERVAL_MS);
   ESP_LOGI(TAG, "IAQ Enabled: Yes (Software Algorithm)");
+#if MQTT_ENABLED
+  ESP_LOGI(TAG, "MQTT: %s", mqtt_is_connected() ? "Connected" : "Disconnected");
+#endif
   ESP_LOGI(TAG, "");
 }
 
@@ -224,8 +270,30 @@ void app_main(void) {
   }
   ESP_LOGI(TAG, "IAQ Calculator initialized");
 
+#if MQTT_ENABLED
+  /* Initialize WiFi */
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "Initializing WiFi...");
+  ret = wifi_init_sta();
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "WiFi connection failed - MQTT disabled");
+  } else {
+    /* Initialize and start MQTT */
+    ESP_LOGI(TAG, "Initializing MQTT client...");
+    ret = mqtt_app_init();
+    if (ret == ESP_OK) {
+      ret = mqtt_app_start();
+      if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to start MQTT client");
+      }
+    } else {
+      ESP_LOGW(TAG, "Failed to initialize MQTT client");
+    }
+  }
+#endif
+
   /* Start tasks */
-  xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, NULL);
+  xTaskCreate(sensor_task, "sensor_task", 8192, NULL, 5, NULL);
   buzzer_start_task();
 
   /* Print system info */

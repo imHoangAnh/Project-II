@@ -13,6 +13,10 @@ CONFIG_FREERTOS_HZ=1000
 # Component config
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 
+# Partition Table - Custom for larger app size (WiFi + MQTT)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
 # Serial flasher config
 CONFIG_ESPTOOLPY_BAUD_921600B=y
 
