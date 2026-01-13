@@ -15,3 +15,5 @@ __pycache__/
 
 # ESP-IDF specific
 sdkconfig.old
+# Documentations
+*.md
