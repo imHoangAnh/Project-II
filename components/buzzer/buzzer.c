@@ -1,6 +1,5 @@
 /**
  * @file buzzer.c
- * @brief Buzzer control implementation
  */
 
 #include "buzzer.h"
@@ -45,9 +44,6 @@ bool buzzer_is_active(void) { return g_buzzer_active; }
 
 gpio_num_t buzzer_get_gpio(void) { return BUZZER_GPIO; }
 
-/**
- * @brief Buzzer alert task - beeps when active
- */
 static void buzzer_task(void *pvParameters) {
   (void)pvParameters; // Unused parameter
   ESP_LOGI(TAG, "Buzzer task started");
@@ -55,7 +51,7 @@ static void buzzer_task(void *pvParameters) {
   while (1) {
     if (g_buzzer_active) {
       buzzer_on();
-      ESP_LOGW(TAG, "[BUZZER] ON - Temperature ALERT!");
+      ESP_LOGW(TAG, "[BUZZER] ON - Air Quality ALERT!");
       vTaskDelay(pdMS_TO_TICKS(BUZZER_ON_TIME_MS));
 
       buzzer_off();

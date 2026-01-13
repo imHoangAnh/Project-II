@@ -36,6 +36,8 @@ CONFIG_HTTPD_MAX_URI_LEN=512
 
 # NVS Configuration
 CONFIG_NVS_ENCRYPTION=n
+# NVS is enabled by default in ESP-IDF
+# Default NVS partition size is sufficient for IAQ state persistence
 
 # Power Management (optional - for energy saving)
 # CONFIG_PM_ENABLE=y
