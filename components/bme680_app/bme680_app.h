@@ -14,21 +14,20 @@
 extern "C" {
 #endif
 
-/* BME680 Configuration */
-#define BME680_I2C_ADDR BME68X_I2C_ADDR_HIGH // 0x77
-#define TEMP_THRESHOLD 100.0f                // Temperature alert threshold (°C)
+#define BME680_I2C_ADDR BME68X_I2C_ADDR_HIGH
+#define TEMP_THRESHOLD 100.0f
 
 /**
  * @brief Sensor data structure
  */
 typedef struct {
-  float temperature;    // Temperature in °C
-  float humidity;       // Humidity in %
-  float pressure;       // Pressure in Pa
-  float gas_resistance; // Gas resistance in Ohms
-  bool gas_valid;       // Gas reading validity
-  bool data_valid;      // Overall data validity
-  uint32_t read_count;  // Number of readings
+  float temperature;
+  float humidity;
+  float pressure;
+  float gas_resistance;
+  bool gas_valid;
+  bool data_valid;
+  uint32_t read_count;
 } bme680_sensor_data_t;
 
 /**

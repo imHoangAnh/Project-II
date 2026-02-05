@@ -9,7 +9,6 @@
 
 static const char *TAG = "BUZZER";
 
-/* Buzzer state - volatile for thread safety */
 static volatile bool g_buzzer_active = false;
 
 esp_err_t buzzer_init(void) {
@@ -27,7 +26,6 @@ esp_err_t buzzer_init(void) {
     return ret;
   }
 
-  /* Ensure buzzer is off at startup */
   gpio_set_level(BUZZER_GPIO, 0);
 
   ESP_LOGI(TAG, "Buzzer initialized on GPIO%d", BUZZER_GPIO);
@@ -45,7 +43,7 @@ bool buzzer_is_active(void) { return g_buzzer_active; }
 gpio_num_t buzzer_get_gpio(void) { return BUZZER_GPIO; }
 
 static void buzzer_task(void *pvParameters) {
-  (void)pvParameters; // Unused parameter
+  (void)pvParameters;
   ESP_LOGI(TAG, "Buzzer task started");
 
   while (1) {

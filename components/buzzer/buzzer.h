@@ -13,10 +13,9 @@
 extern "C" {
 #endif
 
-/* Buzzer Configuration */
-#define BUZZER_GPIO GPIO_NUM_5  // GPIO5   cho Buzzer
-#define BUZZER_ON_TIME_MS 3000  // Thời gian buzzer kêu (ms)
-#define BUZZER_OFF_TIME_MS 2000 // Thời gian buzzer tắt (ms)
+#define BUZZER_GPIO GPIO_NUM_5
+#define BUZZER_ON_TIME_MS 3000
+#define BUZZER_OFF_TIME_MS 2000
 
 /**
  * @brief Initialize buzzer GPIO

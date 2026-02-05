@@ -1,9 +1,6 @@
 /**
  * @file mqtt_client_app.h
  * @brief MQTT Client Application for ESP32
- *
- * This component provides MQTT connectivity to publish
- * BME680 sensor data and IAQ results to a broker.
  */
 
 #ifndef MQTT_CLIENT_APP_H
@@ -18,9 +15,6 @@
 extern "C" {
 #endif
 
-/* ========================== Configuration ================================ */
-/* Chỉnh sửa trực tiếp các giá trị dưới đây để cấu hình WiFi và MQTT.       */
-
 #define WIFI_SSID "Hoanganhh"
 #define WIFI_PASSWORD "250303hanh"
 #define WIFI_MAXIMUM_RETRY 5
@@ -32,38 +26,33 @@ extern "C" {
 #define MQTT_TOPIC_TELEMETRY "v1/devices/me/telemetry"
 #define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"
 
-/**
- * @brief MQTT Topics
- */
 #define MQTT_TOPIC_SENSOR "sensor/bme680/data"
 #define MQTT_TOPIC_IAQ "sensor/bme680/iaq"
 #define MQTT_TOPIC_STATUS "sensor/bme680/status"
 #define MQTT_TOPIC_ALERT "sensor/bme680/alert"
 
-/* ========================== Data Structures ============================== */
-
 /**
  * @brief Sensor data structure for MQTT publishing
  */
 typedef struct {
-  float temperature;    // Temperature in °C
-  float humidity;       // Humidity in %
-  float pressure;       // Pressure in hPa
-  float gas_resistance; // Gas resistance in Ohms
-  bool gas_valid;       // Gas reading validity
+  float temperature;
+  float humidity;
+  float pressure;
+  float gas_resistance;
+  bool gas_valid;
 } mqtt_sensor_data_t;
 
 /**
  * @brief IAQ data structure for MQTT publishing
  */
 typedef struct {
-  float iaq_score;      // IAQ index (0-500)
-  int iaq_level;        // IAQ level enum
-  const char *iaq_text; // IAQ level text description
-  int accuracy;         // Accuracy status
-  float co2_equivalent; // Estimated CO2 in ppm
-  float voc_equivalent; // Estimated VOC in ppm
-  bool is_calibrated;   // Calibration status
+  float iaq_score;
+  int iaq_level;
+  const char *iaq_text;
+  int accuracy;
+  float co2_equivalent;
+  float voc_equivalent;
+  bool is_calibrated;
 } mqtt_iaq_data_t;
 
 /**
@@ -75,8 +64,6 @@ typedef enum {
   MQTT_STATUS_CONNECTED,
   MQTT_STATUS_ERROR
 } mqtt_status_t;
-
-/* ========================== Public Functions ============================= */
 
 /**
  * @brief Initialize WiFi in station mode
@@ -134,7 +121,6 @@ esp_err_t mqtt_publish_alert(const char *alert_type, const char *message);
 #if MQTT_USE_THINGSBOARD
 /**
  * @brief Publish combined sensor + IAQ telemetry to ThingsBoard
- * (v1/devices/me/telemetry)
  * @param sensor Pointer to sensor data (required)
  * @param iaq Pointer to IAQ data (optional; pass NULL if not available)
  * @return ESP_OK on success, error code otherwise

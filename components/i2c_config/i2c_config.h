@@ -14,15 +14,11 @@
 extern "C" {
 #endif
 
-/* I2C Configuration */
 #define I2C_MASTER_NUM I2C_NUM_0
-#define I2C_MASTER_SCL_IO 7       // GPIO7 cho SCL
-#define I2C_MASTER_SDA_IO 6       // GPIO6 cho SDA
-#define I2C_MASTER_FREQ_HZ 100000 // 100kHz
+#define I2C_MASTER_SCL_IO 7
+#define I2C_MASTER_SDA_IO 6
+#define I2C_MASTER_FREQ_HZ 100000
 #define I2C_MASTER_TIMEOUT_MS 1000
-
-//go7crd8h4vk7nki8e5wi
-
 
 /**
  * @brief Initialize I2C master

@@ -1,17 +1,6 @@
 /**
  * @file iaq_calculator.h
  * @brief Indoor Air Quality (IAQ) Calculator based on BME680 sensor data
- *
- * This component provides software-based IAQ calculation algorithm
- * similar to Bosch BSEC library functionality.
- *
- * IAQ Index Ranges:
- * - 0-50:     Excellent
- * - 51-100:   Good
- * - 101-150:  Lightly Polluted
- * - 151-200:  Moderately Polluted
- * - 201-300:  Heavily Polluted
- * - 301-500:  Severely Polluted
  */
 
 #ifndef IAQ_CALCULATOR_H
@@ -25,79 +14,66 @@
 extern "C" {
 #endif
 
-/* ========================== IAQ Level Definitions ========================= */
-
 /**
  * @brief IAQ Level enumeration for easy classification
  */
 typedef enum {
-  IAQ_LEVEL_EXCELLENT = 0,           // 0-50: Excellent air quality
-  IAQ_LEVEL_GOOD = 1,                // 51-100: Good air quality
-  IAQ_LEVEL_LIGHTLY_POLLUTED = 2,    // 101-150: Lightly polluted
-  IAQ_LEVEL_MODERATELY_POLLUTED = 3, // 151-200: Moderately polluted
-  IAQ_LEVEL_HEAVILY_POLLUTED = 4,    // 201-300: Heavily polluted
-  IAQ_LEVEL_SEVERELY_POLLUTED = 5,   // 301-500: Severely polluted
-  IAQ_LEVEL_UNKNOWN = 6              // Invalid or calibrating
+  IAQ_LEVEL_EXCELLENT = 0,
+  IAQ_LEVEL_GOOD = 1,
+  IAQ_LEVEL_LIGHTLY_POLLUTED = 2,
+  IAQ_LEVEL_MODERATELY_POLLUTED = 3,
+  IAQ_LEVEL_HEAVILY_POLLUTED = 4,
+  IAQ_LEVEL_SEVERELY_POLLUTED = 5,
+  IAQ_LEVEL_UNKNOWN = 6
 } iaq_level_t;
 
 /**
  * @brief IAQ Accuracy status
  */
 typedef enum {
-  IAQ_ACCURACY_UNRELIABLE = 0, // Sensor is stabilizing
-  IAQ_ACCURACY_LOW = 1,        // Low accuracy, burn-in period
-  IAQ_ACCURACY_MEDIUM = 2,     // Medium accuracy
-  IAQ_ACCURACY_HIGH = 3        // High accuracy, fully calibrated
+  IAQ_ACCURACY_UNRELIABLE = 0,
+  IAQ_ACCURACY_LOW = 1,
+  IAQ_ACCURACY_MEDIUM = 2,
+  IAQ_ACCURACY_HIGH = 3
 } iaq_accuracy_t;
-
-/* ========================== Data Structures =============================== */
 
 /**
  * @brief Raw sensor data input for IAQ calculation
  */
 typedef struct {
-  float temperature;    // Temperature in °C
-  float humidity;       // Relative humidity in %
-  float pressure;       // Pressure in Pa
-  float gas_resistance; // Gas resistance in Ohms
-  bool gas_valid;       // Gas measurement validity flag
+  float temperature;
+  float humidity;
+  float pressure;
+  float gas_resistance;
+  bool gas_valid;
 } iaq_raw_data_t;
 
 /**
  * @brief Complete IAQ calculation result
  */
 typedef struct {
-  /* Primary outputs */
-  float iaq_score;         // IAQ index (0-500)
-  iaq_level_t iaq_level;   // Classified IAQ level
-  iaq_accuracy_t accuracy; // Accuracy status
-
-  /* Secondary outputs (estimated values) */
-  float co2_equivalent; // Estimated CO2 in ppm
-  float voc_equivalent; // Estimated VOC in ppm
-  float static_iaq;     // Static IAQ (less responsive)
-
-  /* Compensated sensor values */
-  float comp_temperature; // Compensated temperature
-  float comp_humidity;    // Compensated humidity
-
-  /* Algorithm internal state */
-  float gas_baseline;     // Current gas resistance baseline
-  uint32_t samples_count; // Number of samples processed
-  bool is_calibrated;     // Fully calibrated flag
+  float iaq_score;
+  iaq_level_t iaq_level;
+  iaq_accuracy_t accuracy;
+  float co2_equivalent;
+  float voc_equivalent;
+  float static_iaq;
+  float comp_temperature;
+  float comp_humidity;
+  float gas_baseline;
+  uint32_t samples_count;
+  bool is_calibrated;
 } iaq_result_t;
 
 /**
  * @brief IAQ Algorithm configuration
  */
 typedef struct {
-  float temp_offset;            // Temperature offset for compensation
-  float humidity_offset;        // Humidity offset for compensation
-  uint32_t burn_in_samples;     // Samples needed for burn-in (default: 50)
-  float gas_recalibration_rate; // How fast baseline adapts (0.0-1.0)
+  float temp_offset;
+  float humidity_offset;
+  uint32_t burn_in_samples;
+  float gas_recalibration_rate;
 } iaq_config_t;
-
-/* ========================== Public Functions ============================== */
 
 /**
  * @brief Initialize IAQ calculator with default configuration

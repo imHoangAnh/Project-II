@@ -1,8 +1,6 @@
 /**
  * @file mqtt_client_app.c
  * @brief MQTT Client Application Implementation
- *
- * Implements WiFi connectivity and MQTT publishing for BME680 sensor data.
  */
 
 #include "mqtt_client_app.h"
@@ -22,27 +20,16 @@
 #include <string.h>
 #include <time.h>
 
-/* ========================== Private Definitions ========================== */
-
 #define TAG "MQTT_APP"
-
-/* WiFi Event Group bits */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-/* ========================== Private Variables ============================ */
-
-/* WiFi */
 static EventGroupHandle_t s_wifi_event_group = NULL;
 static int s_retry_num = 0;
 static bool s_wifi_connected = false;
-
-/* MQTT */
 static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static mqtt_status_t s_mqtt_status = MQTT_STATUS_DISCONNECTED;
 static SemaphoreHandle_t s_mqtt_mutex = NULL;
-
-/* ========================== Private Functions ============================ */
 
 /**
  * @brief WiFi event handler
@@ -86,7 +73,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     s_mqtt_status = MQTT_STATUS_CONNECTED;
 
 #if !MQTT_USE_THINGSBOARD
-    /* Publish online status (ThingsBoard uses last activity for status) */
     mqtt_publish_status("online");
 #endif
     break;
@@ -205,7 +191,6 @@ static char *create_thingsboard_telemetry_json(const mqtt_sensor_data_t *sensor,
     }
   }
 
-  /* Optional: client timestamp in ms (ThingsBoard accepts ts in payload) */
   cJSON_AddNumberToObject(root, "ts", (double)(time(NULL) * 1000));
 
   char *json_str = cJSON_PrintUnformatted(root);
@@ -214,28 +199,22 @@ static char *create_thingsboard_telemetry_json(const mqtt_sensor_data_t *sensor,
 }
 #endif
 
-/* ========================== Public Functions ============================= */
-
 esp_err_t wifi_init_sta(void) {
   ESP_LOGI(TAG, "Initializing WiFi Station mode...");
 
-  /* Create event group */
   s_wifi_event_group = xEventGroupCreate();
   if (s_wifi_event_group == NULL) {
     ESP_LOGE(TAG, "Failed to create WiFi event group");
     return ESP_ERR_NO_MEM;
   }
 
-  /* Initialize TCP/IP stack */
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_sta();
 
-  /* Initialize WiFi with default config */
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-  /* Register event handlers */
   esp_event_handler_instance_t instance_any_id;
   esp_event_handler_instance_t instance_got_ip;
 
@@ -246,7 +225,6 @@ esp_err_t wifi_init_sta(void) {
       IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL,
       &instance_got_ip));
 
-  /* Configure WiFi */
   wifi_config_t wifi_config = {
       .sta =
           {
@@ -264,7 +242,6 @@ esp_err_t wifi_init_sta(void) {
   ESP_LOGI(TAG, "WiFi initialization complete, connecting to SSID: %s",
            WIFI_SSID);
 
-  /* Wait for connection result */
   EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                          WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                          pdFALSE, pdFALSE, portMAX_DELAY);
@@ -283,14 +260,12 @@ esp_err_t wifi_init_sta(void) {
 esp_err_t mqtt_app_init(void) {
   ESP_LOGI(TAG, "Initializing MQTT client...");
 
-  /* Create mutex */
   s_mqtt_mutex = xSemaphoreCreateMutex();
   if (s_mqtt_mutex == NULL) {
     ESP_LOGE(TAG, "Failed to create MQTT mutex");
     return ESP_ERR_NO_MEM;
   }
 
-  /* Configure MQTT client */
   esp_mqtt_client_config_t mqtt_cfg = {
       .broker.address.uri = MQTT_BROKER_URI,
       .credentials.client_id = MQTT_CLIENT_ID,
@@ -304,14 +279,12 @@ esp_err_t mqtt_app_init(void) {
   }
 #endif
 
-  /* Create MQTT client */
   s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
   if (s_mqtt_client == NULL) {
     ESP_LOGE(TAG, "Failed to create MQTT client");
     return ESP_FAIL;
   }
 
-  /* Register event handler */
   ESP_ERROR_CHECK(esp_mqtt_client_register_event(
       s_mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL));
 
@@ -340,7 +313,6 @@ esp_err_t mqtt_app_stop(void) {
   }
 
 #if !MQTT_USE_THINGSBOARD
-  /* Publish offline status before disconnecting */
   mqtt_publish_status("offline");
   vTaskDelay(pdMS_TO_TICKS(100));
 #endif
@@ -359,14 +331,12 @@ esp_err_t mqtt_publish_sensor_data(const mqtt_sensor_data_t *data) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  /* Create JSON payload */
   char *json_str = create_sensor_json(data);
   if (json_str == NULL) {
     ESP_LOGE(TAG, "Failed to create sensor JSON");
     return ESP_ERR_NO_MEM;
   }
 
-  /* Publish to broker */
   int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_SENSOR,
                                        json_str, strlen(json_str), 1, 0);
 
@@ -391,14 +361,12 @@ esp_err_t mqtt_publish_iaq_data(const mqtt_iaq_data_t *data) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  /* Create JSON payload */
   char *json_str = create_iaq_json(data);
   if (json_str == NULL) {
     ESP_LOGE(TAG, "Failed to create IAQ JSON");
     return ESP_ERR_NO_MEM;
   }
 
-  /* Publish to broker */
   int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_IAQ, json_str,
                                        strlen(json_str), 1, 0);
 
@@ -422,7 +390,6 @@ esp_err_t mqtt_publish_status(const char *status) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  /* Create JSON payload */
   cJSON *root = cJSON_CreateObject();
   if (root == NULL) {
     return ESP_ERR_NO_MEM;
@@ -439,7 +406,6 @@ esp_err_t mqtt_publish_status(const char *status) {
     return ESP_ERR_NO_MEM;
   }
 
-  /* Publish with retain flag for status */
   int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_STATUS,
                                        json_str, strlen(json_str), 1, 1);
 
@@ -463,7 +429,6 @@ esp_err_t mqtt_publish_alert(const char *alert_type, const char *message) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  /* Create JSON payload */
   cJSON *root = cJSON_CreateObject();
   if (root == NULL) {
     return ESP_ERR_NO_MEM;
@@ -481,7 +446,6 @@ esp_err_t mqtt_publish_alert(const char *alert_type, const char *message) {
     return ESP_ERR_NO_MEM;
   }
 
-  /* Publish alert */
   int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_ALERT,
                                        json_str, strlen(json_str), 1, 0);
 
