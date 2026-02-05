@@ -31,18 +31,21 @@
 /**
  * @brief Sensor reading task with IAQ calculation
  */
-static void sensor_task(void *pvParameters) {
+static void sensor_task(void *pvParameters)
+{
   (void)pvParameters; // Unused parameter
   ESP_LOGI(TAG, "Sensor task started - Interval: %d ms",
            SENSOR_READ_INTERVAL_MS);
 
   uint32_t save_counter = 0;
 
-  while (1) {
+  while (1)
+  {
     struct bme68x_data raw_data;
     bme680_sensor_data_t sensor_data;
 
-    if (bme680_app_read(&raw_data) == ESP_OK) {
+    if (bme680_app_read(&raw_data) == ESP_OK)
+    {
       /* Update global data */
       bme680_app_update_data(&raw_data);
       bme680_app_get_data(&sensor_data);
@@ -67,28 +70,37 @@ static void sensor_task(void *pvParameters) {
       ESP_LOGI(TAG, "Humidity    : %8.2f %% ", raw_data.humidity);
       ESP_LOGI(TAG, "Pressure    : %8.2f hPa ", raw_data.pressure / 100.0f);
 
-      if (raw_data.status & BME68X_GASM_VALID_MSK) {
+      if (raw_data.status & BME68X_GASM_VALID_MSK)
+      {
         ESP_LOGI(TAG, "Gas Resist. : %8.0f Ohms ",
                  (float)raw_data.gas_resistance);
-      } else {
+      }
+      else
+      {
         ESP_LOGW(TAG, "Gas Resist. :  Invalid");
       }
 
       /* IAQ Section */
       ESP_LOGI(TAG, "----INDOOR AIR QUALITY (IAQ)----");
 
-      if (iaq_ret == ESP_OK) {
+      if (iaq_ret == ESP_OK)
+      {
         /* IAQ Score with color indicator */
         const char *level_str = iaq_level_to_string(iaq_result.iaq_level);
         const char *acc_str = iaq_accuracy_to_string(iaq_result.accuracy);
 
-        if (iaq_result.iaq_score <= 50) {
+        if (iaq_result.iaq_score <= 50)
+        {
           ESP_LOGI(TAG, "IAQ Score   : %8.1f  [%s]", iaq_result.iaq_score,
                    level_str);
-        } else if (iaq_result.iaq_score <= 150) {
+        }
+        else if (iaq_result.iaq_score <= 150)
+        {
           ESP_LOGW(TAG, "IAQ Score   : %8.1f  [%s]", iaq_result.iaq_score,
                    level_str);
-        } else {
+        }
+        else
+        {
           ESP_LOGE(TAG, "IAQ Score   : %8.1f  [%s]", iaq_result.iaq_score,
                    level_str);
         }
@@ -98,62 +110,99 @@ static void sensor_task(void *pvParameters) {
         ESP_LOGI(TAG, "Accuracy    : %s", acc_str);
 
         /* Calibration progress */
-        if (!iaq_result.is_calibrated) {
+        if (!iaq_result.is_calibrated)
+        {
           uint8_t progress = iaq_get_calibration_progress();
           ESP_LOGW(TAG, "Calibrating : %d%% complete", progress);
         }
 
         /* Periodically save IAQ state */
         save_counter++;
-        if (save_counter >= IAQ_SAVE_INTERVAL && iaq_result.is_calibrated) {
+        if (save_counter >= IAQ_SAVE_INTERVAL && iaq_result.is_calibrated)
+        {
           iaq_save_state();
           save_counter = 0;
         }
-      } else {
+      }
+      else
+      {
         ESP_LOGW(TAG, "IAQ         : Waiting for valid gas data...");
       }
 
       /* Check IAQ level for buzzer alert */
-      if (iaq_ret == ESP_OK && iaq_result.is_calibrated) {
-        if (iaq_result.iaq_level >= IAQ_LEVEL_MODERATELY_POLLUTED) {
+      if (iaq_ret == ESP_OK && iaq_result.is_calibrated)
+      {
+        if (iaq_result.iaq_level >= IAQ_LEVEL_MODERATELY_POLLUTED)
+        {
           /* Buzzer ON: Moderately, Heavily, or Severely Polluted (IAQ >= 151)
            */
           ESP_LOGE(TAG, "ALERT: %s! IAQ=%.0f - Buzzer ON",
                    iaq_level_to_string(iaq_result.iaq_level),
                    iaq_result.iaq_score);
           buzzer_set_active(true);
-        } else if (iaq_result.iaq_level == IAQ_LEVEL_LIGHTLY_POLLUTED) {
+        }
+        else if (iaq_result.iaq_level == IAQ_LEVEL_LIGHTLY_POLLUTED)
+        {
           /* Warning: Lightly Polluted (IAQ 101-150) */
           ESP_LOGW(TAG, "WARNING: Lightly Polluted Air! IAQ=%.0f",
                    iaq_result.iaq_score);
           buzzer_set_active(false);
-        } else {
+        }
+        else
+        {
           /* Normal: Excellent or Good (IAQ 0-100) */
           ESP_LOGI(TAG, "NORMAL: Air Quality Status: %s",
                    iaq_level_to_string(iaq_result.iaq_level));
           buzzer_set_active(false);
         }
-      } else {
+      }
+      else
+      {
         ESP_LOGI(TAG, "Status: Calibrating IAQ sensor...");
         buzzer_set_active(false);
       }
-      ESP_LOGI(TAG, "");
 
 #if MQTT_ENABLED
       /* Publish data to MQTT broker */
-      if (mqtt_is_connected()) {
-        /* Publish sensor data */
+      if (mqtt_is_connected())
+      {
+#if MQTT_USE_THINGSBOARD
+        /* ThingsBoard: one telemetry message (sensor + IAQ) to v1/devices/me/telemetry */
         mqtt_sensor_data_t mqtt_sensor = {
             .temperature = raw_data.temperature,
             .humidity = raw_data.humidity,
-            .pressure = raw_data.pressure / 100.0f, // Convert to hPa
+            .pressure = raw_data.pressure / 100.0f,
+            .gas_resistance = (float)raw_data.gas_resistance,
+            .gas_valid =
+                (raw_data.status & BME68X_GASM_VALID_MSK) ? true : false};
+        mqtt_iaq_data_t mqtt_iaq;
+        mqtt_iaq_data_t *iaq_ptr = NULL;
+        if (iaq_ret == ESP_OK)
+        {
+          mqtt_iaq = (mqtt_iaq_data_t){
+              .iaq_score = iaq_result.iaq_score,
+              .iaq_level = (int)iaq_result.iaq_level,
+              .iaq_text = iaq_level_to_string(iaq_result.iaq_level),
+              .accuracy = (int)iaq_result.accuracy,
+              .co2_equivalent = iaq_result.co2_equivalent,
+              .voc_equivalent = iaq_result.voc_equivalent,
+              .is_calibrated = iaq_result.is_calibrated};
+          iaq_ptr = &mqtt_iaq;
+        }
+        mqtt_publish_thingsboard_telemetry(&mqtt_sensor, iaq_ptr);
+#else
+        /* Standard MQTT: separate topics for sensor and IAQ */
+        mqtt_sensor_data_t mqtt_sensor = {
+            .temperature = raw_data.temperature,
+            .humidity = raw_data.humidity,
+            .pressure = raw_data.pressure / 100.0f,
             .gas_resistance = (float)raw_data.gas_resistance,
             .gas_valid =
                 (raw_data.status & BME68X_GASM_VALID_MSK) ? true : false};
         mqtt_publish_sensor_data(&mqtt_sensor);
 
-        /* Publish IAQ data if available */
-        if (iaq_ret == ESP_OK) {
+        if (iaq_ret == ESP_OK)
+        {
           mqtt_iaq_data_t mqtt_iaq = {
               .iaq_score = iaq_result.iaq_score,
               .iaq_level = (int)iaq_result.iaq_level,
@@ -164,9 +213,9 @@ static void sensor_task(void *pvParameters) {
               .is_calibrated = iaq_result.is_calibrated};
           mqtt_publish_iaq_data(&mqtt_iaq);
 
-          /* Publish alert if air quality is bad */
           if (iaq_result.is_calibrated &&
-              iaq_result.iaq_level >= IAQ_LEVEL_MODERATELY_POLLUTED) {
+              iaq_result.iaq_level >= IAQ_LEVEL_MODERATELY_POLLUTED)
+          {
             char alert_msg[128];
             snprintf(alert_msg, sizeof(alert_msg),
                      "Air quality is %s! IAQ Score: %.0f",
@@ -175,11 +224,13 @@ static void sensor_task(void *pvParameters) {
             mqtt_publish_alert("IAQ_ALERT", alert_msg);
           }
         }
+#endif
         ESP_LOGI(TAG, "MQTT: Data published successfully");
       }
 #endif
-
-    } else {
+    }
+    else
+    {
       ESP_LOGE(TAG, "Failed to read sensor data!");
     }
 
@@ -189,13 +240,15 @@ static void sensor_task(void *pvParameters) {
 
 /* ========================== Main Application ============================= */
 
-static void print_banner(void) {
+static void print_banner(void)
+{
   ESP_LOGI(TAG, "BME680 Environmental Sensor - Terminal Logger");
   ESP_LOGI(TAG, "ESP-IDF: %s", esp_get_idf_version());
   ESP_LOGI(TAG, "");
 }
 
-static void print_system_info(void) {
+static void print_system_info(void)
+{
   ESP_LOGI(TAG, "");
   ESP_LOGI(TAG, "System initialized successfully!");
   ESP_LOGI(TAG, "");
@@ -208,11 +261,15 @@ static void print_system_info(void) {
   ESP_LOGI(TAG, "IAQ Enabled: Yes (Software Algorithm)");
 #if MQTT_ENABLED
   ESP_LOGI(TAG, "MQTT: %s", mqtt_is_connected() ? "Connected" : "Disconnected");
+#if MQTT_USE_THINGSBOARD
+  ESP_LOGI(TAG, "MQTT backend: ThingsBoard (v1/devices/me/telemetry)");
+#endif
 #endif
   ESP_LOGI(TAG, "");
 }
 
-void app_main(void) {
+void app_main(void)
+{
   esp_err_t ret;
 
   /* Print startup banner */
@@ -221,7 +278,8 @@ void app_main(void) {
   /* Initialize NVS */
   ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+  {
     ESP_ERROR_CHECK(nvs_flash_erase());
     ret = nvs_flash_init();
   }
@@ -230,21 +288,24 @@ void app_main(void) {
 
   /* Create sensor mutex */
   ret = bme680_app_create_mutex();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to create sensor mutex");
     return;
   }
 
   /* Initialize Buzzer */
   ret = buzzer_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize buzzer");
     return;
   }
 
   /* Initialize I2C */
   ret = i2c_master_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize I2C");
     return;
   }
@@ -253,7 +314,8 @@ void app_main(void) {
   ESP_LOGI(TAG, "");
   ESP_LOGI(TAG, "Initializing BME680 Sensor");
   ret = bme680_app_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize BME680 sensor");
     ESP_LOGE(TAG, "Check wiring: SDA=GPIO%d, SCL=GPIO%d, Addr=0x%02X",
              I2C_MASTER_SDA_IO, I2C_MASTER_SCL_IO, bme680_app_get_address());
@@ -264,7 +326,8 @@ void app_main(void) {
   ESP_LOGI(TAG, "");
   ESP_LOGI(TAG, "Initializing IAQ Calculator");
   ret = iaq_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize IAQ Calculator");
     return;
   }
@@ -275,18 +338,25 @@ void app_main(void) {
   ESP_LOGI(TAG, "");
   ESP_LOGI(TAG, "Initializing WiFi...");
   ret = wifi_init_sta();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGW(TAG, "WiFi connection failed - MQTT disabled");
-  } else {
+  }
+  else
+  {
     /* Initialize and start MQTT */
     ESP_LOGI(TAG, "Initializing MQTT client...");
     ret = mqtt_app_init();
-    if (ret == ESP_OK) {
+    if (ret == ESP_OK)
+    {
       ret = mqtt_app_start();
-      if (ret != ESP_OK) {
+      if (ret != ESP_OK)
+      {
         ESP_LOGW(TAG, "Failed to start MQTT client");
       }
-    } else {
+    }
+    else
+    {
       ESP_LOGW(TAG, "Failed to initialize MQTT client");
     }
   }

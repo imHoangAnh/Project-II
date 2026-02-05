@@ -21,6 +21,9 @@ extern "C" {
 #define I2C_MASTER_FREQ_HZ 100000 // 100kHz
 #define I2C_MASTER_TIMEOUT_MS 1000
 
+//go7crd8h4vk7nki8e5wi
+
+
 /**
  * @brief Initialize I2C master
  * @return ESP_OK on success, error code otherwise

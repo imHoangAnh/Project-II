@@ -63,4 +63,17 @@ menu "MQTT Client Configuration"
             If enabled, status messages will be retained by the broker.
             This allows new subscribers to immediately see the last status.
 
+    config MQTT_USE_THINGSBOARD
+        bool "Use ThingsBoard as MQTT backend"
+        default n
+        help
+            If enabled, use ThingsBoard MQTT API (topic v1/devices/me/telemetry, username = access token).
+
+    config MQTT_THINGSBOARD_ACCESS_TOKEN
+        string "ThingsBoard Device Access Token"
+        depends on MQTT_USE_THINGSBOARD
+        default ""
+        help
+            Device access token from ThingsBoard. Used as MQTT username.
+
 endmenu

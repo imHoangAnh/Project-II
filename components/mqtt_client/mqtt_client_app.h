@@ -26,13 +26,13 @@ extern "C" {
 #ifdef CONFIG_WIFI_SSID
 #define WIFI_SSID CONFIG_WIFI_SSID
 #else
-#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_SSID "Hoanganhh"
 #endif
 
 #ifdef CONFIG_WIFI_PASSWORD
 #define WIFI_PASSWORD CONFIG_WIFI_PASSWORD
 #else
-#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define WIFI_PASSWORD "250303hanh"
 #endif
 
 #ifdef CONFIG_WIFI_MAXIMUM_RETRY
@@ -47,7 +47,7 @@ extern "C" {
 #ifdef CONFIG_MQTT_BROKER_URI
 #define MQTT_BROKER_URI CONFIG_MQTT_BROKER_URI
 #else
-#define MQTT_BROKER_URI "mqtt://192.168.1.100:1883"
+#define MQTT_BROKER_URI "mqtt://10.143.203.27:1883"
 #endif
 
 #ifdef CONFIG_MQTT_CLIENT_ID
@@ -55,6 +55,21 @@ extern "C" {
 #else
 #define MQTT_CLIENT_ID "esp32_bme680_sensor"
 #endif
+/**
+ * @brief ThingsBoard Configuration
+ */
+// #ifdef CONFIG_MQTT_USE_THINGSBOARD
+// #define MQTT_USE_THINGSBOARD 1
+// #define MQTT_TOPIC_TELEMETRY "v1/devices/me/telemetry"
+// #ifdef CONFIG_MQTT_THINGSBOARD_ACCESS_TOKEN
+// #define MQTT_ACCESS_TOKEN CONFIG_MQTT_THINGSBOARD_ACCESS_TOKEN
+// #else
+// #define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"
+// #endif
+/* ThingsBoard Configuration - Always enabled */
+#define MQTT_USE_THINGSBOARD 1
+#define MQTT_TOPIC_TELEMETRY "v1/devices/me/telemetry"
+#define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"  // ← Access Token của bạn
 
 /**
  * @brief MQTT Topics
@@ -154,6 +169,18 @@ esp_err_t mqtt_publish_status(const char *status);
  * @return ESP_OK on success, error code otherwise
  */
 esp_err_t mqtt_publish_alert(const char *alert_type, const char *message);
+
+#if MQTT_USE_THINGSBOARD
+/**
+ * @brief Publish combined sensor + IAQ telemetry to ThingsBoard
+ * (v1/devices/me/telemetry)
+ * @param sensor Pointer to sensor data (required)
+ * @param iaq Pointer to IAQ data (optional; pass NULL if not available)
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t mqtt_publish_thingsboard_telemetry(const mqtt_sensor_data_t *sensor,
+                                             const mqtt_iaq_data_t *iaq);
+#endif
 
 /**
  * @brief Get current MQTT connection status

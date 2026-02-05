@@ -85,8 +85,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     ESP_LOGI(TAG, "MQTT Connected to broker");
     s_mqtt_status = MQTT_STATUS_CONNECTED;
 
-    /* Publish online status */
+#if !MQTT_USE_THINGSBOARD
+    /* Publish online status (ThingsBoard uses last activity for status) */
     mqtt_publish_status("online");
+#endif
     break;
 
   case MQTT_EVENT_DISCONNECTED:
@@ -174,6 +176,44 @@ static char *create_iaq_json(const mqtt_iaq_data_t *data) {
   return json_str;
 }
 
+#if MQTT_USE_THINGSBOARD
+/**
+ * @brief Create JSON for ThingsBoard telemetry (sensor + IAQ in one payload)
+ */
+static char *create_thingsboard_telemetry_json(const mqtt_sensor_data_t *sensor,
+                                                const mqtt_iaq_data_t *iaq) {
+  cJSON *root = cJSON_CreateObject();
+  if (root == NULL) {
+    return NULL;
+  }
+
+  cJSON_AddNumberToObject(root, "temperature", sensor->temperature);
+  cJSON_AddNumberToObject(root, "humidity", sensor->humidity);
+  cJSON_AddNumberToObject(root, "pressure", sensor->pressure);
+  cJSON_AddNumberToObject(root, "gas_resistance", sensor->gas_resistance);
+  cJSON_AddBoolToObject(root, "gas_valid", sensor->gas_valid);
+
+  if (iaq != NULL) {
+    cJSON_AddNumberToObject(root, "iaq_score", iaq->iaq_score);
+    cJSON_AddNumberToObject(root, "iaq_level", iaq->iaq_level);
+    cJSON_AddNumberToObject(root, "co2_equivalent", iaq->co2_equivalent);
+    cJSON_AddNumberToObject(root, "voc_equivalent", iaq->voc_equivalent);
+    cJSON_AddBoolToObject(root, "is_calibrated", iaq->is_calibrated);
+    cJSON_AddNumberToObject(root, "accuracy", iaq->accuracy);
+    if (iaq->iaq_text != NULL) {
+      cJSON_AddStringToObject(root, "iaq_text", iaq->iaq_text);
+    }
+  }
+
+  /* Optional: client timestamp in ms (ThingsBoard accepts ts in payload) */
+  cJSON_AddNumberToObject(root, "ts", (double)(time(NULL) * 1000));
+
+  char *json_str = cJSON_PrintUnformatted(root);
+  cJSON_Delete(root);
+  return json_str;
+}
+#endif
+
 /* ========================== Public Functions ============================= */
 
 esp_err_t wifi_init_sta(void) {
@@ -257,6 +297,12 @@ esp_err_t mqtt_app_init(void) {
       .session.keepalive = 60,
       .network.reconnect_timeout_ms = 5000,
   };
+#if MQTT_USE_THINGSBOARD
+  if (strlen(MQTT_ACCESS_TOKEN) > 0) {
+    mqtt_cfg.credentials.username = MQTT_ACCESS_TOKEN;
+    mqtt_cfg.credentials.authentication.password = "";
+  }
+#endif
 
   /* Create MQTT client */
   s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -293,9 +339,11 @@ esp_err_t mqtt_app_stop(void) {
     return ESP_ERR_INVALID_STATE;
   }
 
+#if !MQTT_USE_THINGSBOARD
   /* Publish offline status before disconnecting */
   mqtt_publish_status("offline");
-  vTaskDelay(pdMS_TO_TICKS(100)); // Allow message to be sent
+  vTaskDelay(pdMS_TO_TICKS(100));
+#endif
 
   s_mqtt_status = MQTT_STATUS_DISCONNECTED;
   return esp_mqtt_client_stop(s_mqtt_client);
@@ -447,6 +495,36 @@ esp_err_t mqtt_publish_alert(const char *alert_type, const char *message) {
   ESP_LOGW(TAG, "Alert published: [%s] %s", alert_type, message);
   return ESP_OK;
 }
+
+#if MQTT_USE_THINGSBOARD
+esp_err_t mqtt_publish_thingsboard_telemetry(const mqtt_sensor_data_t *sensor,
+                                              const mqtt_iaq_data_t *iaq) {
+  if (sensor == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (s_mqtt_status != MQTT_STATUS_CONNECTED) {
+    ESP_LOGW(TAG, "MQTT not connected, skipping ThingsBoard telemetry");
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  char *json_str = create_thingsboard_telemetry_json(sensor, iaq);
+  if (json_str == NULL) {
+    ESP_LOGE(TAG, "Failed to create ThingsBoard telemetry JSON");
+    return ESP_ERR_NO_MEM;
+  }
+
+  int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_TELEMETRY,
+                                       json_str, strlen(json_str), 1, 0);
+  free(json_str);
+
+  if (msg_id < 0) {
+    ESP_LOGE(TAG, "Failed to publish ThingsBoard telemetry");
+    return ESP_FAIL;
+  }
+  ESP_LOGD(TAG, "ThingsBoard telemetry published, msg_id=%d", msg_id);
+  return ESP_OK;
+}
+#endif
 
 mqtt_status_t mqtt_get_status(void) { return s_mqtt_status; }
 

@@ -1,9 +1,5 @@
 /**
  * @file bme680_app.h
- * @brief BME680 Application wrapper for ESP32
- *
- * This component provides a high-level interface for BME680 sensor
- * including initialization, configuration, and data reading.
  */
 
 #ifndef BME680_APP_H
@@ -84,3 +80,4 @@ esp_err_t bme680_app_create_mutex(void);
 #endif
 
 #endif // BME680_APP_H
+        
