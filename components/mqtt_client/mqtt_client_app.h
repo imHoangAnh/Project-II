@@ -19,57 +19,18 @@ extern "C" {
 #endif
 
 /* ========================== Configuration ================================ */
+/* Chỉnh sửa trực tiếp các giá trị dưới đây để cấu hình WiFi và MQTT.       */
 
-/**
- * @brief WiFi Configuration (from Kconfig or defaults)
- */
-#ifdef CONFIG_WIFI_SSID
-#define WIFI_SSID CONFIG_WIFI_SSID
-#else
 #define WIFI_SSID "Hoanganhh"
-#endif
-
-#ifdef CONFIG_WIFI_PASSWORD
-#define WIFI_PASSWORD CONFIG_WIFI_PASSWORD
-#else
 #define WIFI_PASSWORD "250303hanh"
-#endif
-
-#ifdef CONFIG_WIFI_MAXIMUM_RETRY
-#define WIFI_MAXIMUM_RETRY CONFIG_WIFI_MAXIMUM_RETRY
-#else
 #define WIFI_MAXIMUM_RETRY 5
-#endif
 
-/**
- * @brief MQTT Broker Configuration (from Kconfig or defaults)
- */
-#ifdef CONFIG_MQTT_BROKER_URI
-#define MQTT_BROKER_URI CONFIG_MQTT_BROKER_URI
-#else
 #define MQTT_BROKER_URI "mqtt://10.143.203.27:1883"
-#endif
-
-#ifdef CONFIG_MQTT_CLIENT_ID
-#define MQTT_CLIENT_ID CONFIG_MQTT_CLIENT_ID
-#else
 #define MQTT_CLIENT_ID "esp32_bme680_sensor"
-#endif
-/**
- * @brief ThingsBoard Configuration
- */
-// #ifdef CONFIG_MQTT_USE_THINGSBOARD
-// #define MQTT_USE_THINGSBOARD 1
-// #define MQTT_TOPIC_TELEMETRY "v1/devices/me/telemetry"
-// #ifdef CONFIG_MQTT_THINGSBOARD_ACCESS_TOKEN
-// #define MQTT_ACCESS_TOKEN CONFIG_MQTT_THINGSBOARD_ACCESS_TOKEN
-// #else
-// #define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"
-// #endif
-/* ThingsBoard Configuration - Always enabled */
+
 #define MQTT_USE_THINGSBOARD 1
 #define MQTT_TOPIC_TELEMETRY "v1/devices/me/telemetry"
-#define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"  // ← Access Token của bạn
+#define MQTT_ACCESS_TOKEN "3x50jua1ah34f5r3kfrx"
 
 /**
  * @brief MQTT Topics
